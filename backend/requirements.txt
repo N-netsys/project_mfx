@@ -1,9 +1,10 @@
+alembic
 fastapi
-uvicorn[standard]
-sqlalchemy
+passlib[bcrypt]
 psycopg2-binary
-python-jose[cryptography] # For JWTs
-passlib[bcrypt]           # For password hashing
 pydantic[email]
-alembic                   # For database migrations
-python-dotenv             # To manage environment variables
+python-dotenv
+python-jose[cryptography]
+python-multipart 
+sqlalchemy
+uvicorn[standard]
