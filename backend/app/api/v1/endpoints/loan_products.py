@@ -4,7 +4,7 @@ API endpoints for managing Loan Products.
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import List
-from .. import models, schemas
+from app import models, schemas
 from app.core.dependencies import get_db, allow_admin_only
 
 router = APIRouter()
