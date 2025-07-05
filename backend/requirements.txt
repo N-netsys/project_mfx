@@ -12,3 +12,4 @@ pandas
 openpyxl
 ruff
 pytest
+httpx
