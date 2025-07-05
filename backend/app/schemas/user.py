@@ -1,19 +1,24 @@
+import uuid
 from pydantic import BaseModel, EmailStr
+from ..core.security import UserRole
 
 class UserBase(BaseModel):
     email: EmailStr
 
 class UserCreate(UserBase):
     password: str
-    # In a real app, you might restrict who can set roles/tenants
-    role: str = 'loan_officer'
-    tenant_id: int
 
 class User(UserBase):
-    id: int
-    role: str
+    id: uuid.UUID
+    role: UserRole
+    tenant_id: uuid.UUID
+    client_id: uuid.UUID | None = None
     is_active: bool
-    tenant_id: int
 
     class Config:
         from_attributes = True
+
+class TeamMemberCreate(BaseModel):
+    email: EmailStr
+    password: str
+    role: UserRole

@@ -5,6 +5,8 @@ psycopg2-binary
 pydantic[email]
 python-dotenv
 python-jose[cryptography]
-python-multipart 
+python-multipart
 sqlalchemy
 uvicorn[standard]
+pandas
+openpyxl

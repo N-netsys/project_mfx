@@ -1,22 +1,21 @@
+import uuid
 from pydantic import BaseModel
-from datetime import date
+from .user import UserCreate
 
 class ClientBase(BaseModel):
     first_name: str
     last_name: str
-    phone_number: str | None = None
-    date_of_birth: date | None = None
 
-class ClientCreate(ClientBase):
+# Schema for MFI staff to create a client
+class ClientCreateByStaff(ClientBase):
     pass
 
-class ClientUpdate(ClientBase):
-    pass
+# Schema for a client to sign themselves up
+class ClientSelfSignUp(ClientBase):
+    user_info: UserCreate # Nest user creation details
 
 class Client(ClientBase):
-    id: int
-    tenant_id: int
-    created_by_user_id: int
-
+    id: uuid.UUID
+    tenant_id: uuid.UUID
     class Config:
         from_attributes = True
