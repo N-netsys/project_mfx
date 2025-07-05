@@ -1,14 +1,19 @@
+# backend/app/services/repayment_service.py
+
 """
 Service for handling repayment schedules and transactions.
 """
 from sqlalchemy.orm import Session
-from datetime import date
+from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
-from .. import models, schemas
+
+# --- CORRECTED: Specific imports ---
+from .. import models
+from ..schemas import repayment as repayment_schema
 from . import accounting_service
 
-def generate_schedule(db: Session, loan: models.Loan):
+def generate_schedule(db: Session, loan: models.Loan, grace_days: int = 0):
     """
     Generates a simple, flat-interest repayment schedule for a loan.
     """
@@ -23,8 +28,11 @@ def generate_schedule(db: Session, loan: models.Loan):
     monthly_principal = principal / Decimal(tenure)
     monthly_interest = total_interest / Decimal(tenure)
     
+    # The first payment is due one month from the disbursement date, plus any grace period
+    start_date = loan.disbursed_at or datetime.utcnow()
+    
     for i in range(1, tenure + 1):
-        due_date = date.today() + relativedelta(months=i)
+        due_date = (start_date + relativedelta(months=i, days=grace_days)).date()
         schedule_entry = models.repayment.RepaymentSchedule(
             loan_id=loan.id,
             due_date=due_date,
@@ -37,7 +45,7 @@ def generate_schedule(db: Session, loan: models.Loan):
 
 def record_payment(
     db: Session, 
-    payment_in: schemas.repayment.RepaymentRecord,
+    payment_in: repayment_schema.RepaymentRecord, # This now works
     loan: models.Loan,
     user: models.User
 ):
