@@ -24,11 +24,12 @@ class ChartOfAccount(Base):
     
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
 
+# NEW and CORRECT
 DEFAULT_COA = [
-    {"name": "Cash on Hand", "account_code": "1010", "type": AccountType.ASSET},
-    {"name": "Loans Receivable", "account_code": "1100", "type": AccountType.ASSET},
-    {"name": "Interest Revenue", "account_code": "4010", "type": AccountType.REVENUE},
-    {"name": "Client Savings", "account_code": "2010", "type": AccountType.LIABILITY},
+    {"name": "Cash on Hand", "account_code": "1010", "account_type": AccountType.ASSET},
+    {"name": "Loans Receivable", "account_code": "1100", "account_type": AccountType.ASSET},
+    {"name": "Interest Revenue", "account_code": "4010", "account_type": AccountType.REVENUE},
+    {"name": "Client Savings", "account_code": "2010", "account_type": AccountType.LIABILITY},
 ]
 
 class GeneralLedgerEntry(Base):

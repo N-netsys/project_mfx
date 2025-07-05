@@ -1,55 +1,61 @@
-from fastapi import APIRouter, Depends, status
+# backend/app/api/v1/endpoints/clients.py
+
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
-import uuid
-from app.models import User, Client
-from app import schemas
-from app.services import user_service
-from app.core.dependencies import get_db, allow_mfi_staff
-from app.core.security import UserRole
+
+# --- Specific imports for clarity and correctness ---
+from .... import models
+from ....schemas import client as client_schema
+from ....schemas import user as user_schema
+from ....services import client_service
+from ....core.dependencies import get_db, allow_mfi_staff, get_tenant_from_subdomain
 
 router = APIRouter()
 
-# --- MFI STAFF ENDPOINT ---
 @router.post(
     "/", 
-    response_model=schemas.client.Client, 
+    response_model=client_schema.Client, 
     dependencies=[Depends(allow_mfi_staff)],
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a New Client Record (by MFI Staff)"
 )
 def create_client_by_staff(
-    client_in: schemas.client.ClientCreateByStaff,
-    current_user: User = Depends(allow_mfi_staff),
+    client_in: client_schema.ClientCreateByStaff,
+    current_user: models.User = Depends(allow_mfi_staff),
     db: Session = Depends(get_db)
 ):
-    # Business logic to create a client record by staff
-    pass
+    """
+    Allows an authenticated MFI staff member (Admin, Loan Officer, etc.) to create a new
+    client profile within their organization's tenant.
+    This action does NOT create a user account for the client.
+    """
+    return client_service.create_client_by_staff(db=db, client_in=client_in, user=current_user)
 
-# --- PUBLIC/CLIENT PORTAL ENDPOINT ---
-@router.post("/signup", response_model=schemas.user.User, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/signup", 
+    response_model=user_schema.User, 
+    status_code=status.HTTP_201_CREATED,
+    summary="Client Self-Registration (via Subdomain)"
+)
 def client_self_signup(
-    signup_data: schemas.client.ClientSelfSignUp, 
+    signup_data: client_schema.ClientSelfSignUp, 
+    # The current tenant is now automatically resolved from the request's host/header.
+    tenant: models.Tenant = Depends(get_tenant_from_subdomain),
     db: Session = Depends(get_db)
 ):
-    # This assumes a single-tenant scenario for signup, or tenant is determined differently
-    # For now, let's assume a default tenant for public signups.
-    default_tenant_id = uuid.UUID("your_default_tenant_uuid_here")
-
-    # 1. Create the Client record
-    db_client = Client(
-        first_name=signup_data.first_name,
-        last_name=signup_data.last_name,
-        tenant_id=default_tenant_id
-    )
-    db.add(db_client)
-    db.commit()
-    db.refresh(db_client)
-
-    # 2. Create the User record linked to the Client
-    user = user_service.create_user(
-        db, 
-        user_in=signup_data.user_info, 
-        role=UserRole.CLIENT, 
-        tenant_id=default_tenant_id,
-        client_id=db_client.id
-    )
-    return user
+    """
+    Allows a new person to sign up for the MFI corresponding to the subdomain used.
+    A request to `apex.mfx.com/api/v1/clients/signup` (or a request with the header
+    `X-Tenant-Subdomain: apex`) will sign up a client for the 'Apex' tenant.
+    This creates both a Client profile and a User account for the client portal.
+    """
+    try:
+        user = client_service.create_client_and_user_account(
+            db,
+            signup_data=signup_data,
+            tenant_id=tenant.id
+        )
+        return user
+    except ValueError as e:
+        # Catches errors from the service layer, like "email already exists".
+        raise HTTPException(status_code=400, detail=str(e))

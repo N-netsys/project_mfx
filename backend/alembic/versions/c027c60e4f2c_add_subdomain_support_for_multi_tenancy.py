@@ -1,8 +1,8 @@
-"""Implement full MFI feature set
+"""Add subdomain support for multi-tenancy
 
-Revision ID: c64d059f4504
+Revision ID: c027c60e4f2c
 Revises: 
-Create Date: 2025-07-05 11:04:56.594739
+Create Date: 2025-07-06 01:47:05.110869
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'c64d059f4504'
+revision: str = 'c027c60e4f2c'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -24,9 +24,21 @@ def upgrade() -> None:
     op.create_table('tenants',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
+    sa.Column('subdomain', sa.String(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_tenants_name'), 'tenants', ['name'], unique=True)
+    op.create_index(op.f('ix_tenants_subdomain'), 'tenants', ['subdomain'], unique=True)
+    op.create_table('chart_of_accounts',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('account_code', sa.String(), nullable=False),
+    sa.Column('account_type', sa.Enum('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE', name='accounttype'), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=True),
+    sa.Column('tenant_id', sa.UUID(), nullable=False),
+    sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('clients',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('first_name', sa.String(), nullable=False),
@@ -37,6 +49,22 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_clients_first_name'), 'clients', ['first_name'], unique=False)
     op.create_index(op.f('ix_clients_last_name'), 'clients', ['last_name'], unique=False)
+    op.create_table('funds',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('tenant_id', sa.UUID(), nullable=False),
+    sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('investors',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('email', sa.String(), nullable=True),
+    sa.Column('tenant_id', sa.UUID(), nullable=False),
+    sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('email')
+    )
     op.create_table('loan_products',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
@@ -57,6 +85,30 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('tenant_id')
+    )
+    op.create_table('general_ledger_entries',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('transaction_id', sa.String(), nullable=False),
+    sa.Column('transaction_date', sa.DateTime(), nullable=False),
+    sa.Column('description', sa.String(), nullable=False),
+    sa.Column('account_id', sa.UUID(), nullable=False),
+    sa.Column('debit', sa.Numeric(precision=12, scale=2), nullable=True),
+    sa.Column('credit', sa.Numeric(precision=12, scale=2), nullable=True),
+    sa.Column('tenant_id', sa.UUID(), nullable=False),
+    sa.ForeignKeyConstraint(['account_id'], ['chart_of_accounts.id'], ),
+    sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_general_ledger_entries_transaction_id'), 'general_ledger_entries', ['transaction_id'], unique=False)
+    op.create_table('investments',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('investor_id', sa.UUID(), nullable=False),
+    sa.Column('fund_id', sa.UUID(), nullable=False),
+    sa.Column('amount_invested', sa.Numeric(precision=12, scale=2), nullable=False),
+    sa.Column('investment_date', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['fund_id'], ['funds.id'], ),
+    sa.ForeignKeyConstraint(['investor_id'], ['investors.id'], ),
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('kyc_documents',
     sa.Column('id', sa.UUID(), nullable=False),
@@ -101,21 +153,57 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('repayment_schedules',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('loan_id', sa.UUID(), nullable=False),
+    sa.Column('due_date', sa.Date(), nullable=False),
+    sa.Column('amount_due', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('principal_due', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('interest_due', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'PAID', 'LATE', name='repaymentstatus'), nullable=False),
+    sa.Column('tenant_id', sa.UUID(), nullable=False),
+    sa.ForeignKeyConstraint(['loan_id'], ['loans.id'], ),
+    sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('repayment_transactions',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('loan_id', sa.UUID(), nullable=False),
+    sa.Column('schedule_id', sa.UUID(), nullable=True),
+    sa.Column('amount_paid', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('transaction_date', sa.DateTime(), nullable=False),
+    sa.Column('recorded_by_user_id', sa.UUID(), nullable=False),
+    sa.Column('tenant_id', sa.UUID(), nullable=False),
+    sa.ForeignKeyConstraint(['loan_id'], ['loans.id'], ),
+    sa.ForeignKeyConstraint(['recorded_by_user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['schedule_id'], ['repayment_schedules.id'], ),
+    sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_table('repayment_transactions')
+    op.drop_table('repayment_schedules')
     op.drop_table('loans')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     op.drop_table('kyc_documents')
+    op.drop_table('investments')
+    op.drop_index(op.f('ix_general_ledger_entries_transaction_id'), table_name='general_ledger_entries')
+    op.drop_table('general_ledger_entries')
     op.drop_table('tenant_settings')
     op.drop_table('loan_products')
+    op.drop_table('investors')
+    op.drop_table('funds')
     op.drop_index(op.f('ix_clients_last_name'), table_name='clients')
     op.drop_index(op.f('ix_clients_first_name'), table_name='clients')
     op.drop_table('clients')
+    op.drop_table('chart_of_accounts')
+    op.drop_index(op.f('ix_tenants_subdomain'), table_name='tenants')
     op.drop_index(op.f('ix_tenants_name'), table_name='tenants')
     op.drop_table('tenants')
     # ### end Alembic commands ###
