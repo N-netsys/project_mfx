@@ -11,7 +11,6 @@ from .. import models
 from .config import settings
 from .database import get_db
 from .security import UserRole
-from ..schemas import token as token_schema
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
