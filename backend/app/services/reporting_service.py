@@ -3,7 +3,6 @@ Service for aggregating data and generating reports.
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from decimal import Decimal
 import uuid
 from .. import models, schemas
 

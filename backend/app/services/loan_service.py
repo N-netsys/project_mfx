@@ -4,9 +4,12 @@ Business logic for handling loan operations.
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from datetime import datetime
+from decimal import Decimal # Add Decimal import
 import uuid
 
+# --- CORRECTED: Specific imports ---
 from .. import models, schemas
+from . import repayment_service, accounting_service
 
 def create_loan_application(db: Session, loan_in: schemas.loan.LoanApply, user: models.User) -> models.Loan:
     """

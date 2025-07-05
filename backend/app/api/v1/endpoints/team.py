@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import List
 from .. import models, schemas
-from ..core.dependencies import get_db, allow_admin_only
-from ..services import user_service
+from app.core.dependencies import get_db, allow_admin_only
+from services import user_service
 
 router = APIRouter()
 

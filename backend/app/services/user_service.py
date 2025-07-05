@@ -3,7 +3,7 @@ import uuid
 from ..models.user import User
 from ..schemas.user import UserCreate
 from ..core.security import get_password_hash, verify_password, UserRole
-from .. import models, schemas
+from .. import schemas
 
 def get_user_by_email(db: Session, email: str) -> User | None:
     return db.query(User).filter(User.email == email).first()

@@ -5,12 +5,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
-from .. import models, schemas
-from ..core.dependencies import get_db, allow_mfi_staff
+from ....core.dependencies import get_db, allow_mfi_staff, allow_admin_only, allow_auditor_and_admin
+from ....services import reporting_service
+from .... import models, schemas
+# --- For Excel Export ---
 import pandas as pd
 from io import BytesIO
 from fastapi.responses import StreamingResponse
-from ..services import reporting_service
 
 router = APIRouter()
 
@@ -56,31 +57,27 @@ def get_trial_balance(
 
 @router.get("/dashboard", response_model=schemas.reporting.DashboardMetrics, dependencies=[Depends(allow_admin_only)])
 def get_dashboard_data(
-    current_user: models.User = Depends(allow_admin_only),
+    current_user: models.User = Depends(allow_admin_only), # Now correct
     db: Session = Depends(get_db)
 ):
-    """Provides aggregated metrics for the admin dashboard."""
     return reporting_service.get_dashboard_metrics(db, tenant_id=current_user.tenant_id)
 
 @router.get("/export/loans", dependencies=[Depends(allow_auditor_and_admin)])
 def export_loans_to_excel(
-    current_user: models.User = Depends(allow_auditor_and_admin),
+    current_user: models.User = Depends(allow_auditor_and_admin), # Now correct
     db: Session = Depends(get_db)
 ):
-    """Exports a list of all loans to an Excel file for auditing."""
-    # NOTE: In a production app, add `pandas` and `openpyxl` to requirements.txt
     loans = db.query(models.Loan).filter(models.Loan.tenant_id == current_user.tenant_id).all()
     
-    # Convert SQLAlchemy objects to a list of dicts
     loan_data = [
         {
-            "loan_id": str(l.id),
-            "client_id": str(l.client_id),
-            "amount_requested": float(l.amount_requested),
-            "status": l.status.value,
-            "applied_at": l.applied_at.strftime("%Y-%m-%d %H:%M:%S")
+            "loan_id": str(loan.id), # CORRECTED: Changed 'l' to 'loan'
+            "client_id": str(loan.client_id),
+            "amount_requested": float(loan.amount_requested),
+            "status": loan.status.value,
+            "applied_at": loan.applied_at.strftime("%Y-%m-%d %H:%M:%S") if loan.applied_at else None
         } 
-        for l in loans
+        for loan in loans # CORRECTED: Changed 'l' to 'loan' to fix E741
     ]
     
     df = pd.DataFrame(loan_data)
@@ -91,7 +88,5 @@ def export_loans_to_excel(
     
     output.seek(0)
     
-    headers = {
-        'Content-Disposition': 'attachment; filename="loan_report.xlsx"'
-    }
+    headers = {'Content-Disposition': 'attachment; filename="loan_report.xlsx"'}
     return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

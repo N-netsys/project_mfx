@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
-import uuid
 from .. import models, schemas
 from . import accounting_service
 

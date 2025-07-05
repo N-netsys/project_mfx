@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 import uuid
 from .. import models, schemas
-from ..services import user_service
-from ..core.dependencies import get_db, allow_mfi_staff
-from ..core.security import UserRole
+from app.services import user_service
+from app.core.dependencies import get_db, allow_mfi_staff
+from app.core.security import UserRole
 
 router = APIRouter()
 

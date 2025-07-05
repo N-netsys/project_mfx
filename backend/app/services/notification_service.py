@@ -10,7 +10,7 @@ def send_loan_application_confirmation(user_email: str, loan_id: uuid.UUID):
     """
     print("--- NOTIFICATION ---")
     print(f"To: {user_email}")
-    print(f"Subject: Loan Application Received")
+    print("Subject: Loan Application Received")
     print(f"Body: Your loan application (ID: {loan_id}) has been successfully submitted for review.")
     print("--------------------")
 
@@ -21,6 +21,6 @@ def send_loan_status_update(loan_id: uuid.UUID, new_status: str):
     """
     print("--- NOTIFICATION ---")
     print(f"To: Client associated with Loan ID {loan_id}")
-    print(f"Subject: Your Loan Status has been Updated")
+    print("Subject: Your Loan Status has been Updated")
     print(f"Body: The status of your loan application is now: {new_status}.")
     print("--------------------")

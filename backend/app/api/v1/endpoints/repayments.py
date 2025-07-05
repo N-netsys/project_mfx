@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 import uuid
 from .. import models, schemas
-from ..core.dependencies import get_db, allow_mfi_staff
-from ..services import repayment_service
+from app.core.dependencies import get_db, allow_mfi_staff
+from app.services import repayment_service
 
 router = APIRouter()
 
