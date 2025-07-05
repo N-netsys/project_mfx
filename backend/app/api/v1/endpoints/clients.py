@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 import uuid
 from app.models import User, Client
-from app.schemas import schemas
+from app import schemas
 from app.services import user_service
 from app.core.dependencies import get_db, allow_mfi_staff
 from app.core.security import UserRole
