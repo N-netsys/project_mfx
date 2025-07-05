@@ -1,25 +1,29 @@
+# backend/app/api/v1/endpoints/auth.py
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from .... import models, schemas
+
+# --- CORRECTED: Specific imports from our application modules ---
+from .... import models
+from ....schemas import tenant as tenant_schema # Import the tenant schema module
+from ....schemas import user as user_schema
+from ....schemas import token as token_schema
 from ....services import user_service
 from ....core import security, dependencies
 from ....core.security import UserRole
 from ....models.accounting import DEFAULT_COA
-from ....schemas import token as token_schema
-from ....schemas import user as user_schema
-from ....models.user import User as UserModel
 
 router = APIRouter()
 
 @router.post(
     "/register-organization", 
-    response_model=schemas.user.User, 
+    response_model=user_schema.User, 
     status_code=status.HTTP_201_CREATED,
     summary="Register a New Organization and its First Admin User"
 )
 def register_organization(
-    org_in: schemas.tenant.OrganizationRegistration,
+    org_in: tenant_schema.OrganizationRegistration, # This now works
     db: Session = Depends(dependencies.get_db)
 ):
     """
@@ -35,7 +39,6 @@ def register_organization(
             detail="An account with this email already exists.",
         )
     
-    # Use a single transaction for all creation steps
     try:
         # 1. Create Tenant
         tenant = models.tenant.Tenant(name=org_in.organization_name)
@@ -54,7 +57,7 @@ def register_organization(
         # 4. Create Admin User
         admin_user = user_service.create_user(
             db,
-            user_in=schemas.user.UserCreate(email=org_in.admin_email, password=org_in.admin_password),
+            user_in=user_schema.UserCreate(email=org_in.admin_email, password=org_in.admin_password),
             role=UserRole.ADMIN,
             tenant_id=tenant.id
         )
@@ -62,11 +65,12 @@ def register_organization(
         db.commit()
         db.refresh(admin_user)
         return admin_user
-    except Exception as e:
+    except Exception:
         db.rollback()
+        # In production, you would log the error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to register organization. Error: {e}"
+            detail="Failed to register organization."
         )
 
 @router.post("/token", response_model=token_schema.Token)
@@ -78,12 +82,14 @@ def login_for_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = security.create_access_token(
         data={"sub": str(user.id), "role": user.role}
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+
 @router.get("/me", response_model=user_schema.User)
-def read_current_user(current_user: UserModel = Depends(dependencies.get_current_user)):
+def read_current_user(current_user: models.User = Depends(dependencies.get_current_user)):
     return current_user
