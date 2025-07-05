@@ -10,3 +10,5 @@ sqlalchemy
 uvicorn[standard]
 pandas
 openpyxl
+ruff
+pytest
