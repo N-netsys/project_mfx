@@ -1,19 +1,24 @@
+# backend/app/services/loan_service.py
+
 """
-Business logic for handling loan operations.
+Service layer to orchestrate all business logic related to loans.
+This includes application, approval, disbursement, and triggering other services.
 """
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from datetime import datetime
-from decimal import Decimal # Add Decimal import
+from decimal import Decimal
 import uuid
 
-# --- CORRECTED: Specific imports ---
-from .. import models, schemas
+# --- CORRECTED: Specific imports for clarity and correctness ---
+from .. import models
+from ..schemas import loan as loan_schema
 from . import repayment_service, accounting_service
 
-def create_loan_application(db: Session, loan_in: schemas.loan.LoanApply, user: models.User) -> models.Loan:
+def create_loan_application(db: Session, loan_in: loan_schema.LoanApply, user: models.User) -> models.Loan:
     """
     Creates a new loan application record for a client.
+    Validates that the user is a client and the chosen loan product is valid for their tenant.
     """
     if not user.client_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User is not linked to a client profile.")
@@ -32,7 +37,8 @@ def create_loan_application(db: Session, loan_in: schemas.loan.LoanApply, user: 
         tenure_months=loan_in.tenure_months,
         loan_product_id=loan_in.loan_product_id,
         client_id=user.client_id,
-        tenant_id=user.tenant_id
+        tenant_id=user.tenant_id,
+        status=models.loan.LoanStatus.PENDING # Explicitly set initial status
     )
     db.add(db_loan)
     db.commit()
@@ -82,7 +88,7 @@ def disburse_loan(db: Session, loan_id: uuid.UUID) -> models.Loan:
     accounting_service.post_transaction(
         db,
         tenant_id=db_loan.tenant_id,
-        description=f"Loan disbursement for client {db_loan.client_id}",
+        description=f"Loan disbursement for client {db_loan.client.first_name} {db_loan.client.last_name}",
         debit_account_code=accounting_service.LOANS_RECEIVABLE_ACCOUNT, # Debit asset (Loans Receivable)
         credit_account_code=accounting_service.CASH_ACCOUNT, # Credit asset (Cash)
         amount=Decimal(db_loan.amount_requested)
