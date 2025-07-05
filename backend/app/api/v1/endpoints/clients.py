@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 import uuid
-from app.models import models
+from app.models import User, Client
 from app.schemas import schemas
 from app.services import user_service
 from app.core.dependencies import get_db, allow_mfi_staff
@@ -18,7 +18,7 @@ router = APIRouter()
 )
 def create_client_by_staff(
     client_in: schemas.client.ClientCreateByStaff,
-    current_user: models.User = Depends(allow_mfi_staff),
+    current_user: User = Depends(allow_mfi_staff),
     db: Session = Depends(get_db)
 ):
     # Business logic to create a client record by staff
@@ -35,7 +35,7 @@ def client_self_signup(
     default_tenant_id = uuid.UUID("your_default_tenant_uuid_here")
 
     # 1. Create the Client record
-    db_client = models.Client(
+    db_client = Client(
         first_name=signup_data.first_name,
         last_name=signup_data.last_name,
         tenant_id=default_tenant_id
