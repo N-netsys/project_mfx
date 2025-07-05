@@ -13,8 +13,6 @@ from alembic import context
 # --- Import your app's components ---
 from app.core.config import settings
 from app.models.base import Base
-# Import all your models here so Base registers them
-from app.models import tenant, user, client, loan
 
 # This is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
