@@ -4,7 +4,7 @@ API endpoints for recording loan repayments.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 import uuid
-from .. import models, schemas
+from .... import models, schemas
 from app.core.dependencies import get_db, allow_mfi_staff
 from app.services import repayment_service
 
