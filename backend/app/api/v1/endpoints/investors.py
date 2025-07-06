@@ -3,7 +3,7 @@ API endpoints for managing Investors and Funds.
 """
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from .. import models, schemas
+from .... import models, schemas
 from app.core.dependencies import get_db, allow_admin_only
 from app.services import investor_service
 
