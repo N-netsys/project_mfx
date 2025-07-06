@@ -1,20 +1,27 @@
+# backend/app/services/reporting_service.py
+
 """
-Service for aggregating data and generating reports.
+Service for aggregating data and generating reports and dashboard metrics.
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import uuid
-from .. import models, schemas
 
-def get_dashboard_metrics(db: Session, tenant_id: uuid.UUID) -> schemas.reporting.DashboardMetrics:
+# --- CORRECTED: Specific imports ---
+from .. import models
+from ..schemas import reporting as reporting_schema
+
+def get_dashboard_metrics(db: Session, tenant_id: uuid.UUID) -> reporting_schema.DashboardMetrics:
     """
     Calculates key performance indicators for the MFI admin dashboard.
     """
-    total_clients = db.query(func.count(models.Client.id)).filter(models.Client.tenant_id == tenant_id).scalar()
+    total_clients = db.query(func.count(models.Client.id)).filter(
+        models.Client.tenant_id == tenant_id
+    ).scalar()
 
     active_loans = db.query(func.count(models.Loan.id)).filter(
         models.Loan.tenant_id == tenant_id,
-        models.Loan.status.in_([models.loan.LoanStatus.DISBURSED])
+        models.Loan.status == models.loan.LoanStatus.DISBURSED
     ).scalar()
     
     total_disbursed_query = db.query(func.sum(models.Loan.amount_requested)).filter(
@@ -26,10 +33,10 @@ def get_dashboard_metrics(db: Session, tenant_id: uuid.UUID) -> schemas.reportin
         models.repayment.RepaymentTransaction.tenant_id == tenant_id
     ).scalar()
 
-    # In a real app, PAR would be more complex, checking due dates
+    # In a real app, PAR would be more complex, checking overdue dates
     portfolio_at_risk_par30 = 0.0 
 
-    return schemas.reporting.DashboardMetrics(
+    return reporting_schema.DashboardMetrics(
         total_clients=total_clients or 0,
         active_loans=active_loans or 0,
         total_disbursed=float(total_disbursed_query or 0.0),
